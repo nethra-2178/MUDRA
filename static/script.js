@@ -182,6 +182,7 @@ function renderResult(data) {
   const verdict      = (data.verdict || "uncertain").toLowerCase();
   const score        = typeof data.score === "number" ? data.score : 50;
   const roundedScore = Math.round(score);
+  const displayScore = verdict === "forged" ? (100 - roundedScore) : roundedScore;
 
   /* Banner class */
   verdictBanner.classList.add(verdict);
@@ -242,7 +243,7 @@ function renderResult(data) {
   if (scoreRing) scoreRing.classList.add(verdict);
 
   const scoreNumEl = document.getElementById("score-num");
-  if (scoreNumEl) scoreNumEl.textContent = roundedScore;
+  if (scoreNumEl) scoreNumEl.textContent = displayScore;
 
   const scoreTagEl = document.getElementById("score-tag");
   if (scoreTagEl) {
@@ -261,15 +262,15 @@ function renderResult(data) {
   if (scoreMeaningEl) {
     let m, mTa;
     if (verdict === "verified") {
-      m   = `${roundedScore}/100 — document looks genuine`;
-      mTa = `${roundedScore}/100 — ஆவணம் உண்மையானதாக தெரிகிறது`;
+      m   = `${displayScore}/100 — document looks genuine`;
+      mTa = `${displayScore}/100 — ஆவணம் உண்மையானதாக தெரிகிறது`;
     } else if (verdict === "forged") {
-      m   = `${roundedScore}/100 — high chance of forgery`;
-      mTa = `${roundedScore}/100 — போலியாக இருக்கும் வாய்ப்பு அதிகம்`;
+      m   = `${displayScore}/100 — high chance of forgery`;
+      mTa = `${displayScore}/100 — போலியாக இருக்கும் வாய்ப்பு அதிகம்`;
     } else {
       const total = highCount + medCount;
-      m   = `${roundedScore}/100 — ${total} issue(s) need review`;
-      mTa = `${roundedScore}/100 — ${total} பிரச்சனை சரிபார்க்க வேண்டும்`;
+      m   = `${displayScore}/100 — ${total} issue(s) need review`;
+      mTa = `${displayScore}/100 — ${total} பிரச்சனை சரிபார்க்க வேண்டும்`;
     }
     scoreMeaningEl.setAttribute("data-en", m);
     scoreMeaningEl.setAttribute("data-ta", mTa);
@@ -278,7 +279,7 @@ function renderResult(data) {
 
   /* Animate ring arc */
   const circumference = 289.03;
-  const offset = circumference - (score / 100) * circumference;
+  const offset = circumference - (displayScore / 100) * circumference;
   setTimeout(() => {
     const rf = document.getElementById("ring-fill");
     if (rf) rf.style.strokeDashoffset = offset;
