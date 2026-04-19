@@ -1,1 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MUDRA — Document Checker</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%237F3F33'/><text y='24' x='4' font-size='22'>📄</text></svg>" />
+</head>
+<body>
 
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" data-en="Analysing…" data-ta="பகுப்பாய்வு செய்கிறது…">Analysing…</div>
+  <div class="loading-sub" data-en="Running ELA, OCR & metadata checks on your document."
+       data-ta="ELA, OCR மற்றும் மெட்டாடேட்டா சரிபார்ப்புகள் இயக்கப்படுகின்றன.">
+    Running ELA, OCR &amp; metadata checks on your document.
+  </div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <div class="nav-logo">📄</div>
+      <div class="nav-title">
+        <span class="brand-name">MUDRA</span>
+        <span class="brand-sub">Document Checker</span>
+      </div>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn tamil" data-lang="ta">தமிழ்</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">AI-powered detection</div>
+    <h1 class="hero-heading">
+      <span data-en="Is your document" data-ta="உங்கள் ஆவணம்">Is your document</span>
+      <span class="accent" data-en="real or fake?" data-ta="உண்மையா அல்லது போலியா?">real or fake?</span>
+    </h1>
+    <p class="hero-desc" data-en="Upload any certificate, card, or official document. MUDRA checks it in seconds and tells you if it looks genuine — in plain words, no technical jargon."
+       data-ta="எந்த சான்றிதழ், அட்டை அல்லது அதிகாரப்பூர்வ ஆவணத்தையும் பதிவேற்றுங்கள். MUDRA சில வினாடிகளில் சரிபார்த்து உண்மையானதா என்று தெளிவாக சொல்லும்.">
+      Upload any certificate, card, or official document. MUDRA checks it in seconds and tells you if it looks genuine — in plain words, no technical jargon.
+    </p>
+  </section>
+
+  <!-- UPLOAD CARD -->
+  <div class="upload-card">
+    <form id="upload-form">
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" name="file"
+               accept=".pdf,.jpg,.jpeg,.png,.bmp,.tiff,.webp" />
+        <div class="upload-icon-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0L8 8m4-4l4 4"/>
+          </svg>
+        </div>
+        <p class="drop-title" data-en="Drop your document here" data-ta="உங்கள் ஆவணத்தை இங்கே போடுங்கள்">
+          Drop your document here
+        </p>
+        <p class="drop-sub" data-en="Aadhaar, ration card, certificate, mark sheet — any official document"
+           data-ta="ஆதார், ரேஷன் கார்டு, சான்றிதழ், மார்க் ஷீட் — எந்த அதிகாரப்பூர்வ ஆவணமும்">
+          Aadhaar, ration card, certificate, mark sheet — any official document
+        </p>
+        <div class="drop-formats">
+          <span class="format-pill">PDF</span>
+          <span class="drop-separator">·</span>
+          <span class="format-pill">JPG</span>
+          <span class="drop-separator">·</span>
+          <span class="format-pill">PNG</span>
+          <span class="drop-separator">·</span>
+          <span class="format-pill">BMP</span>
+          <span class="drop-separator">·</span>
+          <span class="format-pill">TIFF</span>
+        </div>
+      </div>
+
+      <!-- File preview -->
+      <div class="file-preview" id="file-preview">
+        <div class="file-icon" id="file-icon">📄</div>
+        <div class="file-info">
+          <div class="file-name" id="file-name">document.pdf</div>
+          <div class="file-size" id="file-size">109.5 KB</div>
+        </div>
+        <button type="button" class="btn-remove" id="btn-remove" title="Remove file">✕</button>
+      </div>
+
+      <!-- Doc type -->
+      <div class="doc-type-row">
+        <span class="doc-type-label" data-en="Document type" data-ta="ஆவண வகை">Document type</span>
+        <select class="doc-type-select" name="doc_type" id="doc-type">
+          <option value="generic"     data-en="Generic / Unknown"      data-ta="பொது / தெரியாத வகை">Generic / Unknown</option>
+          <option value="aadhaar"     data-en="Aadhaar Card"           data-ta="ஆதார் அட்டை">Aadhaar Card</option>
+          <option value="pan"         data-en="PAN Card"               data-ta="PAN அட்டை">PAN Card</option>
+          <option value="ration"      data-en="Ration Card"            data-ta="ரேஷன் கார்டு">Ration Card</option>
+          <option value="marksheet"   data-en="Mark Sheet"             data-ta="மார்க் ஷீட்">Mark Sheet</option>
+          <option value="certificate" data-en="Certificate / Degree"   data-ta="சான்றிதழ் / பட்டம்">Certificate / Degree</option>
+          <option value="passport"    data-en="Passport"               data-ta="பாஸ்போர்ட்">Passport</option>
+          <option value="licence"     data-en="Driving Licence"        data-ta="ஓட்டுநர் உரிமம்">Driving Licence</option>
+        </select>
+      </div>
+
+      <!-- Analyse button -->
+      <button type="submit" class="btn-analyse" id="btn-analyse" disabled>
+        <div class="spinner"></div>
+        <span class="btn-text" data-en="🔍 Analyse Document" data-ta="🔍 ஆவணத்தை பகுப்பாய்வு செய்">
+          🔍 Analyse Document
+        </span>
+      </button>
+
+    </form>
+
+    <!-- Trust row -->
+    <div class="trust-row">
+      <div class="trust-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span data-en="Files never stored" data-ta="கோப்புகள் சேமிக்கப்படுவதில்லை">Files never stored</span>
+      </div>
+      <div class="trust-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+        </svg>
+        <span data-en="Results in seconds" data-ta="சில வினாடிகளில் முடிவுகள்">Results in seconds</span>
+      </div>
+      <div class="trust-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span data-en="AI-powered ELA + OCR" data-ta="AI ஆதரவு ELA + OCR">AI-powered ELA + OCR</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrapper -->
+
+<div id="toast"></div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>
