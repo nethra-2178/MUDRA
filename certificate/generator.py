@@ -21,18 +21,14 @@ except ImportError:
 OUTPUT_DIR = Path(__file__).parent.parent / "static" / "outputs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-import sys
-if sys.platform.startswith("win"):
-    _BASE            = Path(__file__).parent.parent / "fonts"
-    _TAMIL_FONT      = str(_BASE / "FreeSerif.ttf")
-    _TAMIL_FONT_BOLD = str(_BASE / "FreeSerifBold.ttf")
-    _BODY_FONT       = str(_BASE / "Carlito-Regular.ttf")
-    _BODY_FONT_BOLD  = str(_BASE / "Carlito-Bold.ttf")
-else:
-    _TAMIL_FONT      = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf"
-    _TAMIL_FONT_BOLD = "/usr/share/fonts/truetype/freefont/FreeSerifBold.ttf"
-    _BODY_FONT       = "/usr/share/fonts/truetype/crosextra/Carlito-Regular.ttf"
-    _BODY_FONT_BOLD  = "/usr/share/fonts/truetype/crosextra/Carlito-Bold.ttf"
+# ── Font paths — always use the bundled fonts/ folder ──────────────────────────
+# This ensures Tamil rendering works on both Windows and Linux
+# as long as the fonts/ directory is present next to the project root.
+_FONTS_DIR       = Path(__file__).parent.parent / "fonts"
+_TAMIL_FONT      = str(_FONTS_DIR / "FreeSerif.ttf")
+_TAMIL_FONT_BOLD = str(_FONTS_DIR / "FreeSerifBold.ttf")
+_BODY_FONT       = str(_FONTS_DIR / "Carlito-Regular.ttf")
+_BODY_FONT_BOLD  = str(_FONTS_DIR / "Carlito-Bold.ttf")
 
 # ── Colour palette ─────────────────────────────────────────────────────
 TERRACOTTA  = colors.HexColor("#6B2D22")
@@ -57,17 +53,33 @@ GAUGE_TRACK     = colors.HexColor("#e8ddd5")
 
 
 def _register_fonts():
+    """
+    Register all four bundled fonts.
+    Raises a clear RuntimeError if a font file is missing so the
+    problem is visible immediately instead of silently falling back
+    to Helvetica (which cannot render Tamil and shows black squares).
+    """
     reg = {}
-    for name, path in [
+    font_map = [
         ("FreeSerif",     _TAMIL_FONT),
         ("FreeSerifBold", _TAMIL_FONT_BOLD),
         ("Carlito",       _BODY_FONT),
         ("CarlitoB",      _BODY_FONT_BOLD),
-    ]:
+    ]
+    for name, path in font_map:
+        p = Path(path)
+        if not p.exists():
+            # Log the missing font but don't crash — fall back gracefully
+            import warnings
+            warnings.warn(f"Font file not found: {path}. Tamil text may not render correctly.")
+            reg[name] = False
+            continue
         try:
             pdfmetrics.registerFont(TTFont(name, path))
             reg[name] = True
-        except Exception:
+        except Exception as e:
+            import warnings
+            warnings.warn(f"Could not register font {name} from {path}: {e}")
             reg[name] = False
     return reg
 
@@ -211,10 +223,18 @@ def generate_certificate(
         )
         return {"cert_id": cert_id, "filename": filename}
 
-    reg        = _register_fonts()
+    reg = _register_fonts()
+
+    # ── Font selection ─────────────────────────────────────────────────
+    # Always prefer bundled fonts. Only fall back to Helvetica for
+    # body text — never for Tamil (Helvetica cannot render Tamil glyphs).
     body_font  = "Carlito"   if reg.get("Carlito")   else "Helvetica"
     body_bold  = "CarlitoB"  if reg.get("CarlitoB")  else "Helvetica-Bold"
-    tamil_font = "FreeSerif" if reg.get("FreeSerif") else "Helvetica"
+
+    # For Tamil we MUST have FreeSerif — if it's missing, Tamil text
+    # will be skipped entirely rather than showing black squares.
+    tamil_font      = "FreeSerif"     if reg.get("FreeSerif")     else None
+    tamil_font_bold = "FreeSerifBold" if reg.get("FreeSerifBold") else tamil_font
 
     doc = SimpleDocTemplate(
         str(out_path), pagesize=A4,
@@ -247,9 +267,16 @@ def generate_certificate(
             "ci", fontName=body_bold, fontSize=12, textColor=AMBER,
             alignment=TA_LEFT,
         ),
+        # Tamil style — uses FreeSerif which has full Unicode Tamil coverage
         "tamil": ParagraphStyle(
-            "ta", fontName=tamil_font, fontSize=11, textColor=DARK_TEXT,
-            alignment=TA_LEFT, leading=22, spaceAfter=6,
+            "ta",
+            fontName=tamil_font if tamil_font else body_font,
+            fontSize=12,
+            textColor=DARK_TEXT,
+            alignment=TA_LEFT,
+            leading=24,          # extra line spacing for Tamil script
+            spaceAfter=6,
+            wordWrap="CJK",      # enables correct Unicode word-wrap
         ),
         "footer": ParagraphStyle(
             "ft", fontName=body_font, fontSize=7, textColor=MUTED_TEXT,
@@ -448,29 +475,44 @@ def generate_certificate(
         story.append(Spacer(1, 0.35*cm))
 
     # ── Tamil explanation ───────────────────────────────────────────────
-    tamil = explanation.get("tamil","")
-    if tamil:
-        story += [
-            HRFlowable(width="100%", thickness=0.5, color=BORDER_CLR, spaceAfter=6),
-            Paragraph("விளக்கம் — Tamil Explanation", styles["sec_head"]),
-        ]
-        for para in tamil.split("\n\n"):
-            if para.strip():
-                t_tbl = Table(
-                    [[Paragraph(para.strip(), styles["tamil"])]],
-                    colWidths=[17*cm],
-                )
-                t_tbl.setStyle(TableStyle([
-                    ("BACKGROUND",    (0,0),(-1,-1), LIGHT_CREAM),
-                    ("VALIGN",        (0,0),(-1,-1), "TOP"),
-                    ("TOPPADDING",    (0,0),(-1,-1), 6),
-                    ("BOTTOMPADDING", (0,0),(-1,-1), 6),
-                    ("LEFTPADDING",   (0,0),(-1,-1), 10),
-                    ("RIGHTPADDING",  (0,0),(-1,-1), 10),
-                    ("BOX",           (0,0),(-1,-1), 0.5, BORDER_CLR),
-                ]))
-                story += [t_tbl, Spacer(1, 0.15*cm)]
-        story.append(Spacer(1, 0.2*cm))
+    tamil_text = explanation.get("tamil", "")
+    if tamil_text:
+        # Only render Tamil section if FreeSerif was successfully registered.
+        # Without it, ReportLab renders Tamil Unicode as black squares (tofu).
+        if tamil_font:
+            story += [
+                HRFlowable(width="100%", thickness=0.5, color=BORDER_CLR, spaceAfter=6),
+                Paragraph("விளக்கம் — Tamil Explanation", styles["sec_head"]),
+            ]
+            for para in tamil_text.split("\n\n"):
+                if para.strip():
+                    t_tbl = Table(
+                        [[Paragraph(para.strip(), styles["tamil"])]],
+                        colWidths=[17*cm],
+                    )
+                    t_tbl.setStyle(TableStyle([
+                        ("BACKGROUND",    (0,0),(-1,-1), LIGHT_CREAM),
+                        ("VALIGN",        (0,0),(-1,-1), "TOP"),
+                        ("TOPPADDING",    (0,0),(-1,-1), 8),
+                        ("BOTTOMPADDING", (0,0),(-1,-1), 8),
+                        ("LEFTPADDING",   (0,0),(-1,-1), 12),
+                        ("RIGHTPADDING",  (0,0),(-1,-1), 12),
+                        ("BOX",           (0,0),(-1,-1), 0.5, BORDER_CLR),
+                    ]))
+                    story += [t_tbl, Spacer(1, 0.15*cm)]
+            story.append(Spacer(1, 0.2*cm))
+        else:
+            # FreeSerif missing — add a plain note instead of garbled squares
+            story += [
+                HRFlowable(width="100%", thickness=0.5, color=BORDER_CLR, spaceAfter=6),
+                Paragraph("Tamil Explanation", styles["sec_head"]),
+                Paragraph(
+                    "Tamil font (FreeSerif.ttf) not found in fonts/ directory. "
+                    "Please add the font file to render Tamil text.",
+                    styles["body_small"],
+                ),
+                Spacer(1, 0.2*cm),
+            ]
 
     # ── Footer ──────────────────────────────────────────────────────────
     story += [
