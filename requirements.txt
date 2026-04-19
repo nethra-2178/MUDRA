@@ -1,1 +1,10 @@
-
+flask
+flask-cors
+python-dotenv
+werkzeug
+pillow
+numpy
+pymupdf
+pytesseract
+google-generativeai
+reportlab
